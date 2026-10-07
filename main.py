@@ -53,12 +53,9 @@ def tum_marketleri_guncelle():
         print("\n[2/4] A101 Afişleri Çekiliyor...")
         try:
             a101_data = a101_cek()
-            if a101_data and a101_data.get("kampanyalar"):
-                with open("data/a101.json", "w", encoding="utf-8") as f:
-                    json.dump(a101_data, f, ensure_ascii=False, separators=(',', ':'))
-                print(" -> A101 verisi hazır.")
-            else:
-                print(" -> A101 verisi boş döndü, mevcut dosya korundu.")
+            with open("data/a101.json", "w", encoding="utf-8") as f:
+                json.dump(a101_data, f, ensure_ascii=False, separators=(',', ':'))
+            print(" -> A101 verisi hazır.")
         except Exception as e:
             print(f" -> A101 hatası: {e}")
     else:

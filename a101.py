@@ -7,22 +7,13 @@ def a101_tum_kataloglari_cek():
     base_api = "https://rio.a101.com.tr/dbmk89vnr/CALL/poster"
     list_url = f"{base_api}/list/default?__culture=tr-TR&__platform=web"
     
-    # Cloudflare doğrulaması için gerekli tam tarayıcı başlıkları:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept": "application/json",
         "Origin": "https://www.a101.com.tr",
-        "Referer": "https://www.a101.com.tr/",
-        "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-site"
+        "Referer": "https://www.a101.com.tr/"
     }
 
-    # Desteklenen standart profil:
     session = requests.Session(impersonate="chrome120")
     
     print("A101 kampanya listesi alınıyor...")
@@ -115,6 +106,6 @@ if __name__ == "__main__":
         json.dump(sonuc, f, ensure_ascii=False, separators=(',', ':'))
 
     print("\n" + "="*50)
-    print("A101 AFİŞLERİ BAŞARIYLA ALINDI")
+    print("A101 AFİŞLERİ SIKIŞTIRILARAK ALINDI")
     print(f"Toplam Çekilen Sayfa: {sonuc.get('toplam_afis_sayisi', 0)}")
     print("="*50)
