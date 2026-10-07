@@ -4,7 +4,7 @@ on:
   schedule:
     # Her gece Türkiye saatiyle 03:00'te otomatik calisir (UTC 00:00)
     - cron: '0 0 * * *'
-  workflow_dispatch: # GitHub web sitesinden "Run workflow" butonuyla istedigin an elle calistirma imkani
+  workflow_dispatch:
 
 jobs:
   scrape-and-update:
@@ -22,7 +22,7 @@ jobs:
       - name: Kutuphaneleri Yukle
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install curl_cffi beautifulsoup4 pypdfium2 Pillow requests
 
       - name: Marketleri Tara
         run: |
