@@ -1,6 +1,9 @@
 from curl_cffi import requests
+from PIL import Image
+from io import BytesIO
 import json
 import time
+import os
 from datetime import datetime
 
 def a101_tum_kataloglari_cek():
@@ -14,12 +17,12 @@ def a101_tum_kataloglari_cek():
         "Referer": "https://www.a101.com.tr/"
     }
 
+    os.makedirs("a101_afisler", exist_ok=True)
     session = requests.Session(impersonate="chrome120")
     
     print("A101 kampanya listesi alınıyor...")
     res = session.get(list_url, headers=headers)
     if res.status_code != 200:
-        print(f"Liste alınamadı! Hata kodu: {res.status_code}")
         return {}
 
     veri = res.json()
@@ -27,70 +30,53 @@ def a101_tum_kataloglari_cek():
     if isinstance(veri, list):
         items = veri
 
-    print(f"Toplam {len(items)} aktif kampanya grubu tespit edildi.\n")
-
     kampanyalar = []
     toplam_sayfa_sayisi = 0
+    genel_sayac = 1
 
     for item in items:
         kampanya_id = item.get("id")
         baslik = item.get("title", "").strip() or "A101 Aktüel"
-        
         if not kampanya_id:
             continue
 
-        print(f"-> Çekiliyor: {baslik}...")
-        
         detail_url = f"{base_api}/get/default/{kampanya_id}?__culture=tr-TR&__platform=web"
         detay_res = session.get(detail_url, headers=headers)
         
         sayfalar = []
-        baslangic = item.get("start", "")
-        bitis = item.get("end", "")
-
         if detay_res.status_code == 200:
             detay_data = detay_res.json()
             pages_list = detay_data.get("pages", [])
             
             for p in pages_list:
-                img_url = ""
-                if isinstance(p, dict):
-                    img_url = p.get("image") or p.get("url") or ""
-                    if not img_url and isinstance(p.get("web"), dict):
-                        img_url = p["web"].get("image", "")
-                elif isinstance(p, str):
-                    img_url = p
+                img_url = p.get("image") or p.get("url") if isinstance(p, dict) else (p if isinstance(p, str) else "")
+                if not img_url and isinstance(p, dict) and isinstance(p.get("web"), dict):
+                    img_url = p["web"].get("image", "")
 
                 if img_url:
-                    # PNG YERİNE SIKIŞTIRILMIŞ JPG VE MOBİL BOYUT
-                    opt_url = img_url.replace(".png", ".jpg").replace("_1024x1024", "_800x800")
-                    sayfalar.append({
-                        "sayfa_no": len(sayfalar) + 1,
-                        "resim_url": opt_url
-                    })
-
-            if not baslangic:
-                baslangic = detay_data.get("start", "")
-            if not bitis:
-                bitis = detay_data.get("end", "")
-
-        if not sayfalar:
-            kapak = item.get("web", {}).get("image") or item.get("image")
-            if kapak:
-                opt_kapak = kapak.replace(".png", ".jpg").replace("_1024x1024", "_800x800")
-                sayfalar.append({"sayfa_no": 1, "resim_url": opt_kapak})
+                    dosya_adi = f"a101_afisler/a101_sayfa_{genel_sayac}.webp"
+                    try:
+                        img_res = session.get(img_url, headers=headers)
+                        if img_res.status_code == 200:
+                            pil_img = Image.open(BytesIO(img_res.content)).convert("RGB")
+                            pil_img.save(dosya_adi, "WEBP", quality=75, method=4)
+                            
+                            sayfalar.append({
+                                "sayfa_no": len(sayfalar) + 1,
+                                "resim_url": dosya_adi
+                            })
+                            genel_sayac += 1
+                    except Exception as e:
+                        print(f"[-] A101 görsel indirilemedi: {e}")
 
         kampanyalar.append({
             "kampanya_adi": baslik,
             "kampanya_id": kampanya_id,
-            "baslangic_tarihi": baslangic,
-            "bitis_tarihi": bitis,
             "sayfa_sayisi": len(sayfalar),
             "sayfalar": sayfalar
         })
-
         toplam_sayfa_sayisi += len(sayfalar)
-        time.sleep(0.15)
+        time.sleep(0.1)
 
     veri_paketi = {
         "market": "A101",
@@ -104,11 +90,6 @@ def a101_tum_kataloglari_cek():
 
 if __name__ == "__main__":
     sonuc = a101_tum_kataloglari_cek()
-
-    with open("a101_data.json", "w", encoding="utf-8") as f:
+    with open("data/a101.json", "w", encoding="utf-8") as f:
         json.dump(sonuc, f, ensure_ascii=False, separators=(',', ':'))
-
-    print("\n" + "="*50)
-    print("A101 AFİŞLERİ SIKIŞTIRILARAK ALINDI")
-    print(f"Toplam Sayfa: {sonuc.get('toplam_afis_sayisi', 0)}")
-    print("="*50)
+    print(f"A101 WebP tamam: {sonuc.get('toplam_afis_sayisi', 0)} sayfa")
