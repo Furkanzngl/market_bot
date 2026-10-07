@@ -39,7 +39,7 @@ def a101_tum_kataloglari_cek():
         if not kampanya_id:
             continue
 
-        print(f"-> Çekiliyor: {baslik} (ID: {kampanya_id})...")
+        print(f"-> Çekiliyor: {baslik}...")
         
         detail_url = f"{base_api}/get/default/{kampanya_id}?__culture=tr-TR&__platform=web"
         detay_res = session.get(detail_url, headers=headers)
@@ -50,14 +50,11 @@ def a101_tum_kataloglari_cek():
 
         if detay_res.status_code == 200:
             detay_data = detay_res.json()
-            
-            # A101 sayfaları doğrudan 'pages' listesinde tutar
             pages_list = detay_data.get("pages", [])
             
             for p in pages_list:
                 img_url = ""
                 if isinstance(p, dict):
-                    # Görsel linkini al
                     img_url = p.get("image") or p.get("url") or ""
                     if not img_url and isinstance(p.get("web"), dict):
                         img_url = p["web"].get("image", "")
@@ -65,19 +62,16 @@ def a101_tum_kataloglari_cek():
                     img_url = p
 
                 if img_url:
-                    # En yüksek çözünürlük için boyutu kaldır veya koru
                     sayfalar.append({
                         "sayfa_no": len(sayfalar) + 1,
                         "resim_url": img_url
                     })
 
-            # Başlangıç - bitiş tarihleri
             if not baslangic:
                 baslangic = detay_data.get("start", "")
             if not bitis:
                 bitis = detay_data.get("end", "")
 
-        # Pages boş geldiyse kapak görselini al
         if not sayfalar:
             kapak = item.get("web", {}).get("image") or item.get("image")
             if kapak:
@@ -93,7 +87,7 @@ def a101_tum_kataloglari_cek():
         })
 
         toplam_sayfa_sayisi += len(sayfalar)
-        time.sleep(0.2)
+        time.sleep(0.15)
 
     veri_paketi = {
         "market": "A101",
@@ -109,13 +103,9 @@ if __name__ == "__main__":
     sonuc = a101_tum_kataloglari_cek()
 
     with open("a101_data.json", "w", encoding="utf-8") as f:
-        json.dump(sonuc, f, ensure_ascii=False, indent=4)
+        json.dump(sonuc, f, ensure_ascii=False, separators=(',', ':'))
 
     print("\n" + "="*50)
-    print("A101 TÜM KATALOGLAR BAŞARIYLA ALINDI")
-    print(f"Toplam Kampanya Sayısı : {sonuc.get('toplam_kampanya', 0)}")
-    print(f"Toplam Çekilen Sayfa   : {sonuc.get('toplam_afis_sayisi', 0)}")
-    print("="*50)
-    for k in sonuc.get("kampanyalar", []):
-        print(f" • {k['kampanya_adi']:25} -> {k['sayfa_sayisi']} Sayfa")
+    print("A101 AFİŞLERİ SIKIŞTIRILARAK ALINDI")
+    print(f"Toplam Çekilen Sayfa: {sonuc.get('toplam_afis_sayisi', 0)}")
     print("="*50)

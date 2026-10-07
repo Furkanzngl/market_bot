@@ -1,4 +1,3 @@
-import time
 import os
 import json
 from datetime import datetime
@@ -42,7 +41,7 @@ def tum_marketleri_guncelle():
         try:
             bim_data = bim_cek()
             with open("data/bim.json", "w", encoding="utf-8") as f:
-                json.dump(bim_data, f, ensure_ascii=False, indent=2)
+                json.dump(bim_data, f, ensure_ascii=False, separators=(',', ':'))
             print(" -> BİM verisi hazır.")
         except Exception as e:
             print(f" -> BİM hatası: {e}")
@@ -55,7 +54,7 @@ def tum_marketleri_guncelle():
         try:
             a101_data = a101_cek()
             with open("data/a101.json", "w", encoding="utf-8") as f:
-                json.dump(a101_data, f, ensure_ascii=False, indent=2)
+                json.dump(a101_data, f, ensure_ascii=False, separators=(',', ':'))
             print(" -> A101 verisi hazır.")
         except Exception as e:
             print(f" -> A101 hatası: {e}")
@@ -68,7 +67,7 @@ def tum_marketleri_guncelle():
         try:
             sok_data = sok_cek()
             with open("data/sok.json", "w", encoding="utf-8") as f:
-                json.dump(sok_data, f, ensure_ascii=False, indent=2)
+                json.dump(sok_data, f, ensure_ascii=False, separators=(',', ':'))
             print(" -> ŞOK verisi hazır.")
         except Exception as e:
             print(f" -> ŞOK hatası: {e}")
@@ -81,7 +80,7 @@ def tum_marketleri_guncelle():
         try:
             migros_data = migros_cek()
             with open("data/migros.json", "w", encoding="utf-8") as f:
-                json.dump(migros_data, f, ensure_ascii=False, indent=2)
+                json.dump(migros_data, f, ensure_ascii=False, separators=(',', ':'))
             print(" -> Migros verisi hazır.")
         except Exception as e:
             print(f" -> Migros hatası: {e}")
@@ -89,7 +88,7 @@ def tum_marketleri_guncelle():
         print("\n[4/4] Migros modülü bulunamadı, atlandı.")
 
     print("\n" + "=" * 60)
-    print("TÜM MARKET VERİLERİ BAŞARIYLA GÜNCELLENDİ VE 'data/' KLASÖRÜNE KAYDEDİLDİ")
+    print("TÜM MARKET VERİLERİ SIKIŞTIRILARAK 'data/' KLASÖRÜNE KAYDEDİLDİ")
     print("=" * 60)
 
 if __name__ == "__main__":

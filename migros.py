@@ -3,67 +3,43 @@ import json
 import time
 from datetime import datetime
 
-# Dikkate alınmayacak, indirimi ifade etmeyen kuru tanıtım rozetleri
 YOKSAYILAN_ROZETLER = {
     "GREAT_PRICE", "MIGROSKOP", "PESTICIDE_ANALYZED", "PESTICIDE_FREE",
     "GOOD_AGRICULTURE", "LOCAL_PRODUCT", "BEST_SELLER"
 }
 
 def avantaj_analizi_yap(product):
-    """
-    Ürünün gerçek bir avantajı olup olmadığını inceler.
-    Avantaj yoksa (None, None, False) döner ve ürün elenir.
-    """
     discount_rate = product.get("discountRate", 0)
     badges = product.get("badges", [])
     
     kampanya_tipi = None
-    kampanya_metni = None
 
-    # 1. Rozet bazlı çoklu ve sepet kampanyalarını tara
     for b in badges:
         b_name = b.get("name", "")
         b_val = b.get("value", "").strip()
 
-        # Genel tanıtım rozetlerini atla
         if b_name in YOKSAYILAN_ROZETLER or b_val.lower() in ["iyi fiyat", "migroskop", "pestisit analizli"]:
             continue
 
         b_val_lower = b_val.lower()
 
-        # Çoklu alım kampanyaları (2 Al 1 Öde, 3 Al 2 Öde vb.)
         if b_name == "CROSS_PROMOTED" or "al " in b_val_lower or "öde" in b_val_lower or "hediye" in b_val_lower:
             kampanya_tipi = "Çoklu Kampanya"
-            kampanya_metni = b_val
             break
-        # Sepet kampanyaları
         elif "sepette" in b_val_lower:
             kampanya_tipi = "Sepette İndirim"
-            kampanya_metni = b_val
             break
-        # Money Kart / Fiyat avantajı
         elif b_name == "PRICE_PROMOTED":
             kampanya_tipi = "Fiyat İndirimi"
-            kampanya_metni = f"Eski Fiyat: {b_val}"
             break
         elif b_val:
             kampanya_tipi = "Özel Kampanya"
-            kampanya_metni = b_val
             break
 
-    # 2. Doğrudan fiyat indirimi varsa
-    if discount_rate > 0:
-        if not kampanya_tipi:
-            kampanya_tipi = "Fiyat İndirimi"
-            kampanya_metni = f"%{discount_rate} İndirim"
-        return kampanya_tipi, kampanya_metni, True
+    if discount_rate > 0 or kampanya_tipi:
+        return True
 
-    # 3. İndirim oranı %0 ama kampanya rozeti yakalandıysa (Örn: 2 Al 1 Öde)
-    if kampanya_tipi:
-        return kampanya_tipi, kampanya_metni, True
-
-    # 4. Hiçbir avantaj yok -> DIŞLA
-    return None, None, False
+    return False
 
 def migroskop_urunlerini_cek():
     headers = {
@@ -75,9 +51,7 @@ def migroskop_urunlerini_cek():
     }
 
     session = requests.Session(impersonate="chrome120")
-    pdf_url = "https://moneyclubkart.azureedge.net/mcstage/907-24-eylul-7-ekim-migroskop-639259551466403073.pdf"
-
-    print("1. Migroskop kampanya verisi taranıyor...")
+    print("Migroskop kampanya verisi taranıyor...")
     ilk_url = "https://www.migros.com.tr/rest/search/screens/migroskop-urunleri-dt-3?sayfa=1"
     
     try:
@@ -88,10 +62,8 @@ def migroskop_urunlerini_cek():
         return {}
 
     search_info = ana_veri.get("data", {}).get("searchInfo", {})
-    hedef_hit_count = search_info.get("hitCount", 0)
-    print(f"[+] Taranacak Toplam Ham Ürün: {hedef_hit_count}")
-
     dinamik_kanallar = [{"ad": "Ana Havuz", "param": ""}]
+    
     for grup in search_info.get("aggregationGroups", []):
         if grup.get("type") in ["CATEGORY", "DISCOUNT"]:
             param_key = "kategori" if grup.get("type") == "CATEGORY" else "indirim"
@@ -102,52 +74,39 @@ def migroskop_urunlerini_cek():
                 })
 
     tum_avantajli_urunler = {}
-    elenen_indirimsiz_idler = set()  # Tekil ID bazlı takip
+    elenen_indirimsiz_idler = set()
 
     def urun_isle(urunler):
         for u in urunler:
             u_id = u.get("id")
-            # Daha önce avantajlı olarak eklenmiş veya elenmiş tekil ürünleri tekrar işleme
             if not u_id or u_id in tum_avantajli_urunler or u_id in elenen_indirimsiz_idler:
                 continue
 
-            kampanya_tipi, kampanya_metni, gecerli_avantaj = avantaj_analizi_yap(u)
-            
-            # Gerçek avantajı olmayan tekil ürünü elenenler kümesine at
-            if not gecerli_avantaj:
+            if not avantaj_analizi_yap(u):
                 elenen_indirimsiz_idler.add(u_id)
                 continue
 
             ascendants = u.get("categoryAscendants", [])
-            if ascendants:
-                reyon_adi = ascendants[-1].get("name", "Diğer")
-                alt_kategori = ascendants[0].get("name", reyon_adi)
-            else:
-                reyon_adi = u.get("category", {}).get("name", "Genel Fırsatlar")
-                alt_kategori = reyon_adi
+            reyon_adi = ascendants[-1].get("name", "Diğer") if ascendants else u.get("category", {}).get("name", "Genel Fırsatlar")
 
             gorseller = u.get("images", [])
-            hd_resim = ""
+            resim_url = ""
             if gorseller and "urls" in gorseller[0]:
-                hd_resim = gorseller[0]["urls"].get("PRODUCT_HD") or gorseller[0]["urls"].get("PRODUCT_DETAIL", "")
+                urls = gorseller[0]["urls"]
+                # 1650x1650 yerine mobil veri tasarrufu için PRODUCT_DETAIL alıyoruz
+                resim_url = urls.get("PRODUCT_DETAIL") or urls.get("PRODUCT_HD", "")
 
+            rate = u.get("discountRate", 0)
             tum_avantajli_urunler[u_id] = {
-                "id": u_id,
                 "urun_adi": u.get("name"),
-                "marka": u.get("brand", {}).get("name", ""),
                 "ana_kategori": reyon_adi,
-                "alt_kategori": alt_kategori,
                 "normal_fiyat": u.get("regularPrice", 0) / 100,
                 "indirimli_fiyat": u.get("shownPrice", 0) / 100,
-                "indirim_orani": f"%{u.get('discountRate', 0)}",
-                "kampanya_tipi": kampanya_tipi,
-                "kampanya_metni": kampanya_metni,
-                "birim_fiyat": u.get("unitPrice", ""),
-                "gorsel_hd": hd_resim
+                "indirim_orani": f"%{rate}" if rate > 0 else None,
+                "gorsel_hd": resim_url
             }
 
     for kanal in dinamik_kanallar:
-        ad = kanal["ad"]
         ek_param = kanal["param"]
         sayfa = 1
 
@@ -175,7 +134,6 @@ def migroskop_urunlerini_cek():
             except Exception:
                 break
 
-    # Kategori gruplama (Sadece avantajı olan ürünlerle)
     kategori_gruplari = {}
     for urun in tum_avantajli_urunler.values():
         kat = urun["ana_kategori"]
@@ -194,12 +152,8 @@ def migroskop_urunlerini_cek():
 
     veri_paketi = {
         "market": "Migros",
-        "kampanya_adi": "Dijital Migroskop Fırsatları",
-        "orijinal_pdf_katalog": pdf_url,
         "guncelleme_tarihi": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "toplam_gecerli_avantaj": len(tum_avantajli_urunler),
-        "elenen_indirimsiz_urun": len(elenen_indirimsiz_idler),
-        "toplam_islenen_tekil_urun": len(tum_avantajli_urunler) + len(elenen_indirimsiz_idler),
         "kategori_sayisi": len(kategori_listesi),
         "kategoriler": kategori_listesi
     }
@@ -210,15 +164,9 @@ if __name__ == "__main__":
     sonuc = migroskop_urunlerini_cek()
 
     with open("migros_data.json", "w", encoding="utf-8") as f:
-        json.dump(sonuc, f, ensure_ascii=False, indent=4)
+        json.dump(sonuc, f, ensure_ascii=False, separators=(',', ':'))
 
     print("\n" + "="*50)
-    print("MİGROSKOP GERÇEK AVANTAJ LİSTESİ TAMAMLANDI")
-    print(f"Toplam Geçerli Avantajlı Ürün : {sonuc.get('toplam_gecerli_avantaj', 0)}")
-    print(f"Dışlanan İndirimsiz Tekil Ürün: {sonuc.get('elenen_indirimsiz_urun', 0)}")
-    print(f"Toplam İşlenen Tekil Havuz    : {sonuc.get('toplam_islenen_tekil_urun', 0)}")
-    print(f"Aktif Kategori Sayısı         : {sonuc.get('kategori_sayisi', 0)}")
-    print("="*50)
-    for k in sonuc.get("kategoriler", [])[:10]:
-        print(f" • {k['kategori_adi']:30} : {k['urun_sayisi']} fırsat ürünü")
+    print("MİGROS AVANTAJ LİSTESİ SIKIŞTIRILDI")
+    print(f"Toplam Fırsat Ürünü: {sonuc.get('toplam_gecerli_avantaj', 0)}")
     print("="*50)

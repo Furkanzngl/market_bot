@@ -41,23 +41,24 @@ def sok_afislerini_cek():
                 print(f"   [-] Hata kodu: {res.status_code}")
                 continue
 
-            # PDF doğrulaması (PDF dosyaları %PDF- ile başlar)
             if not res.content.startswith(b"%PDF"):
                 print("   [-] Dönen veri PDF formatında değil.")
                 continue
 
             pdf = pdfium.PdfDocument(res.content)
             sayfa_sayisi = len(pdf)
-            print(f"   [+] Başarılı! {sayfa_sayisi} sayfa tespit edildi. Görsellere dönüştürülüyor...")
+            print(f"   [+] {sayfa_sayisi} sayfa tespit edildi. WebP formatına sıkıştırılıyor...")
 
             sayfalar = []
             prefix = "carsamba" if idx == 1 else "haftasonu"
 
             for s_no, page in enumerate(pdf, 1):
-                # scale=2 ile net matbaa çözünürlüğü
-                image = page.render(scale=2).to_pil()
-                dosya_adi = f"sok_afisler/{prefix}_sayfa_{s_no}.jpg"
-                image.save(dosya_adi, "JPEG", quality=92)
+                # scale=1.5 mobil ekranlar için ideal netliği korur
+                image = page.render(scale=1.5).to_pil()
+                dosya_adi = f"sok_afisler/{prefix}_sayfa_{s_no}.webp"
+                
+                # WEBP formatında %75 kalite ile kaydet (Dosya boyutu ~80-120 KB olur)
+                image.save(dosya_adi, "WEBP", quality=75, method=4)
                 
                 sayfalar.append({
                     "sayfa_no": s_no,
@@ -89,14 +90,9 @@ if __name__ == "__main__":
     sonuc = sok_afislerini_cek()
 
     with open("sok_data.json", "w", encoding="utf-8") as f:
-        json.dump(sonuc, f, ensure_ascii=False, indent=4)
+        json.dump(sonuc, f, ensure_ascii=False, indent=2)
 
     print("\n" + "="*50)
-    print("ŞOK TÜM AFİŞLER BAŞARIYLA DÖNÜŞTÜRÜLDÜ")
-    print(f"Toplam Kampanya : {sonuc.get('toplam_kampanya', 0)}")
-    print(f"Toplam Sayfa    : {sonuc.get('toplam_afis_sayisi', 0)}")
-    print("Görseller 'sok_afisler/' klasörüne kaydedildi.")
-    print("="*50)
-    for k in sonuc.get("kampanyalar", []):
-        print(f" • {k['kampanya_adi']:35} -> {k['toplam_sayfa']} Sayfa")
+    print("ŞOK TÜM AFİŞLER WEBP OLARAK SIKIŞTIRILDI")
+    print(f"Toplam Sayfa: {sonuc.get('toplam_afis_sayisi', 0)}")
     print("="*50)
