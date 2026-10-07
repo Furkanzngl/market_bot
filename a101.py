@@ -14,7 +14,8 @@ def a101_tum_kataloglari_cek():
         "Referer": "https://www.a101.com.tr/"
     }
 
-    session = requests.Session(impersonate="chrome120")
+    # Hem Windows hem Linux ortamında User-Agent ile TLS parmak izini %100 eşitler:
+    session = requests.Session(impersonate="chrome120_windows")
     
     print("A101 kampanya listesi alınıyor...")
     res = session.get(list_url, headers=headers)
