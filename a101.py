@@ -62,9 +62,11 @@ def a101_tum_kataloglari_cek():
                     img_url = p
 
                 if img_url:
+                    # PNG YERİNE SIKIŞTIRILMIŞ JPG VE MOBİL BOYUT
+                    opt_url = img_url.replace(".png", ".jpg").replace("_1024x1024", "_800x800")
                     sayfalar.append({
                         "sayfa_no": len(sayfalar) + 1,
-                        "resim_url": img_url
+                        "resim_url": opt_url
                     })
 
             if not baslangic:
@@ -75,7 +77,8 @@ def a101_tum_kataloglari_cek():
         if not sayfalar:
             kapak = item.get("web", {}).get("image") or item.get("image")
             if kapak:
-                sayfalar.append({"sayfa_no": 1, "resim_url": kapak})
+                opt_kapak = kapak.replace(".png", ".jpg").replace("_1024x1024", "_800x800")
+                sayfalar.append({"sayfa_no": 1, "resim_url": opt_kapak})
 
         kampanyalar.append({
             "kampanya_adi": baslik,
@@ -107,5 +110,5 @@ if __name__ == "__main__":
 
     print("\n" + "="*50)
     print("A101 AFİŞLERİ SIKIŞTIRILARAK ALINDI")
-    print(f"Toplam Çekilen Sayfa: {sonuc.get('toplam_afis_sayisi', 0)}")
+    print(f"Toplam Sayfa: {sonuc.get('toplam_afis_sayisi', 0)}")
     print("="*50)
