@@ -7,42 +7,25 @@ import os
 from datetime import datetime
 
 def a101_tum_kataloglari_cek():
+    # Orijinal çalışan API linki ve platform parametresi
     base_api = "https://rio.a101.com.tr/dbmk89vnr/CALL/poster"
-    # Web platformu yerine doğrudan Android client parametresi
-    list_url = f"{base_api}/list/default?__culture=tr-TR&__platform=android"
+    list_url = f"{base_api}/list/default?__culture=tr-TR&__platform=web"
     
-    # A101 Resmi Android Uygulaması Başlıkları (Cloudflare mobil trafiği veri merkezinde olsa dahi engellemez)
+    # Orijinal çalışan başlıklar
     headers = {
-        "User-Agent": "okhttp/4.9.2 A101/2.8.4 (Android; 13; Build/TP1A.220624.014)",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "application/json",
-        "Accept-Encoding": "gzip",
-        "X-Platform": "android",
-        "X-Application-Version": "2.8.4",
-        "Connection": "Keep-Alive"
+        "Origin": "https://www.a101.com.tr",
+        "Referer": "https://www.a101.com.tr/"
     }
 
-    # Mobil okhttp isteklerinde TLS parmak izi browser değil düz client olmalıdır
     session = requests.Session(impersonate="chrome120")
-    
     os.makedirs("a101_afisler", exist_ok=True)
     
-    print("A101 kampanya listesi alınıyor (Mobil Protokol)...")
-    
-    res = None
-    for deneme in range(3):
-        try:
-            res = session.get(list_url, headers=headers, timeout=20)
-            if res.status_code == 200:
-                break
-            print(f"[-] Deneme {deneme + 1} başarısız (Kod: {res.status_code}), yeniden deneniyor...")
-            time.sleep(2)
-        except Exception as e:
-            print(f"[-] Bağlantı hatası: {e}")
-            time.sleep(2)
-
-    if not res or res.status_code != 200:
-        hata_kodu = res.status_code if res else "Bilinmiyor"
-        print(f"Liste alınamadı! Hata kodu: {hata_kodu}")
+    print("A101 kampanya listesi alınıyor...")
+    res = session.get(list_url, headers=headers)
+    if res.status_code != 200:
+        print(f"Liste alınamadı! Hata kodu: {res.status_code}")
         return {}
 
     veri = res.json()
@@ -59,61 +42,83 @@ def a101_tum_kataloglari_cek():
     for item in items:
         kampanya_id = item.get("id")
         baslik = item.get("title", "").strip() or "A101 Aktüel"
+        
         if not kampanya_id:
             continue
 
-        detail_url = f"{base_api}/get/default/{kampanya_id}?__culture=tr-TR&__platform=android"
+        print(f"-> Çekiliyor: {baslik}...")
         
-        try:
-            detay_res = session.get(detail_url, headers=headers, timeout=20)
-        except Exception:
-            continue
-
+        detail_url = f"{base_api}/get/default/{kampanya_id}?__culture=tr-TR&__platform=web"
+        detay_res = session.get(detail_url, headers=headers)
+        
         sayfalar = []
+        baslangic = item.get("start", "")
+        bitis = item.get("end", "")
+
         if detay_res.status_code == 200:
             detay_data = detay_res.json()
             pages_list = detay_data.get("pages", [])
             
             for p in pages_list:
-                img_url = p.get("image") or p.get("url") if isinstance(p, dict) else (p if isinstance(p, str) else "")
-                if not img_url and isinstance(p, dict) and isinstance(p.get("web"), dict):
-                    img_url = p["web"].get("image", "")
+                img_url = ""
+                if isinstance(p, dict):
+                    img_url = p.get("image") or p.get("url") or ""
+                    if not img_url and isinstance(p.get("web"), dict):
+                        img_url = p["web"].get("image", "")
+                elif isinstance(p, str):
+                    img_url = p
 
                 if img_url:
                     dosya_adi = f"a101_afisler/a101_sayfa_{genel_sayac}.webp"
                     
-                    if os.path.exists(dosya_adi):
-                        sayfalar.append({
-                            "sayfa_no": len(sayfalar) + 1,
-                            "resim_url": dosya_adi
-                        })
-                        genel_sayac += 1
-                        continue
+                    # Önceden indiyse tekrar indirme
+                    if not os.path.exists(dosya_adi):
+                        try:
+                            img_res = session.get(img_url, headers=headers, timeout=15)
+                            if img_res.status_code == 200:
+                                pil_img = Image.open(BytesIO(img_res.content)).convert("RGB")
+                                pil_img.save(dosya_adi, "WEBP", quality=75, method=4)
+                        except Exception as e:
+                            print(f"[-] WebP dönüştürülemedi: {e}")
 
+                    sayfalar.append({
+                        "sayfa_no": len(sayfalar) + 1,
+                        "resim_url": dosya_adi
+                    })
+                    genel_sayac += 1
+
+            if not baslangic:
+                baslangic = detay_data.get("start", "")
+            if not bitis:
+                bitis = detay_data.get("end", "")
+
+        # Pages boş geldiyse kapak görselini al
+        if not sayfalar:
+            kapak = item.get("web", {}).get("image") or item.get("image")
+            if kapak:
+                dosya_adi = f"a101_afisler/a101_sayfa_{genel_sayac}.webp"
+                if not os.path.exists(dosya_adi):
                     try:
-                        # Görsel indirme isteği
-                        img_res = session.get(img_url, headers=headers, timeout=20)
+                        img_res = session.get(kapak, headers=headers, timeout=15)
                         if img_res.status_code == 200:
                             pil_img = Image.open(BytesIO(img_res.content)).convert("RGB")
-                            pil_img.thumbnail((1080, 1920))
                             pil_img.save(dosya_adi, "WEBP", quality=75, method=4)
-                            
-                            sayfalar.append({
-                                "sayfa_no": len(sayfalar) + 1,
-                                "resim_url": dosya_adi
-                            })
-                            genel_sayac += 1
-                    except Exception as e:
-                        print(f"[-] A101 görsel indirilemedi: {e}")
+                    except Exception:
+                        pass
+                sayfalar.append({"sayfa_no": 1, "resim_url": dosya_adi})
+                genel_sayac += 1
 
         kampanyalar.append({
             "kampanya_adi": baslik,
             "kampanya_id": kampanya_id,
+            "baslangic_tarihi": baslangic,
+            "bitis_tarihi": bitis,
             "sayfa_sayisi": len(sayfalar),
             "sayfalar": sayfalar
         })
+
         toplam_sayfa_sayisi += len(sayfalar)
-        time.sleep(0.15)
+        time.sleep(0.1)
 
     veri_paketi = {
         "market": "A101",
@@ -127,8 +132,7 @@ def a101_tum_kataloglari_cek():
 
 if __name__ == "__main__":
     sonuc = a101_tum_kataloglari_cek()
-    if sonuc:
-        os.makedirs("data", exist_ok=True)
-        with open("data/a101.json", "w", encoding="utf-8") as f:
-            json.dump(sonuc, f, ensure_ascii=False, separators=(',', ':'))
-        print(f"A101 WebP tamam: {sonuc.get('toplam_afis_sayisi', 0)} sayfa")
+    os.makedirs("data", exist_ok=True)
+    with open("data/a101.json", "w", encoding="utf-8") as f:
+        json.dump(sonuc, f, ensure_ascii=False, separators=(',', ':'))
+    print(f"\nA101 WebP afişleri hazır: {sonuc.get('toplam_afis_sayisi', 0)} sayfa")
