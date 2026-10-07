@@ -1,7 +1,6 @@
 from curl_cffi import requests
 import json
 import time
-import os
 from datetime import datetime
 
 def a101_tum_kataloglari_cek():
@@ -18,12 +17,7 @@ def a101_tum_kataloglari_cek():
     session = requests.Session(impersonate="chrome120")
     
     print("A101 kampanya listesi alınıyor...")
-    try:
-        res = session.get(list_url, headers=headers, timeout=20)
-    except Exception as e:
-        print(f"Bağlantı hatası: {e}")
-        return {}
-
+    res = session.get(list_url, headers=headers)
     if res.status_code != 200:
         print(f"Liste alınamadı! Hata kodu: {res.status_code}")
         return {}
@@ -45,11 +39,10 @@ def a101_tum_kataloglari_cek():
         if not kampanya_id:
             continue
 
+        print(f"-> Çekiliyor: {baslik}...")
+        
         detail_url = f"{base_api}/get/default/{kampanya_id}?__culture=tr-TR&__platform=web"
-        try:
-            detay_res = session.get(detail_url, headers=headers, timeout=20)
-        except Exception:
-            continue
+        detay_res = session.get(detail_url, headers=headers)
         
         sayfalar = []
         baslangic = item.get("start", "")
@@ -69,11 +62,9 @@ def a101_tum_kataloglari_cek():
                     img_url = p
 
                 if img_url:
-                    # PNG'yi kaldırıp A101 CDN'inden hafif WebP/JPG talep ediyoruz:
-                    opt_url = img_url.replace(".png", ".webp").replace(".jpg", ".webp").replace("_1024x1024", "_800x800")
                     sayfalar.append({
                         "sayfa_no": len(sayfalar) + 1,
-                        "resim_url": opt_url
+                        "resim_url": img_url
                     })
 
             if not baslangic:
@@ -84,8 +75,7 @@ def a101_tum_kataloglari_cek():
         if not sayfalar:
             kapak = item.get("web", {}).get("image") or item.get("image")
             if kapak:
-                opt_kapak = kapak.replace(".png", ".webp").replace(".jpg", ".webp").replace("_1024x1024", "_800x800")
-                sayfalar.append({"sayfa_no": 1, "resim_url": opt_kapak})
+                sayfalar.append({"sayfa_no": 1, "resim_url": kapak})
 
         kampanyalar.append({
             "kampanya_adi": baslik,
@@ -97,7 +87,7 @@ def a101_tum_kataloglari_cek():
         })
 
         toplam_sayfa_sayisi += len(sayfalar)
-        time.sleep(0.1)
+        time.sleep(0.15)
 
     veri_paketi = {
         "market": "A101",
@@ -111,8 +101,11 @@ def a101_tum_kataloglari_cek():
 
 if __name__ == "__main__":
     sonuc = a101_tum_kataloglari_cek()
-    if sonuc and sonuc.get("kampanyalar"):
-        os.makedirs("data", exist_ok=True)
-        with open("data/a101.json", "w", encoding="utf-8") as f:
-            json.dump(sonuc, f, ensure_ascii=False, separators=(',', ':'))
-        print(f"\nA101 güncellendi: {sonuc.get('toplam_afis_sayisi', 0)} sayfa")
+
+    with open("a101_data.json", "w", encoding="utf-8") as f:
+        json.dump(sonuc, f, ensure_ascii=False, separators=(',', ':'))
+
+    print("\n" + "="*50)
+    print("A101 AFİŞLERİ SIKIŞTIRILARAK ALINDI")
+    print(f"Toplam Çekilen Sayfa: {sonuc.get('toplam_afis_sayisi', 0)}")
+    print("="*50)
