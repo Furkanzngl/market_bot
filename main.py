@@ -52,7 +52,7 @@ def tum_marketleri_guncelle():
     if a101_cek:
         print("\n[2/4] A101 Afişleri Çekiliyor...")
         try:
-            a101_data = a101_cek()
+            a101_data = a101_tum_kataloglari_cek()
             # Eğer veri boş gelmediyse diske yaz
             if a101_data and a101_data.get("kampanyalar"):
                 with open("data/a101.json", "w", encoding="utf-8") as f:
