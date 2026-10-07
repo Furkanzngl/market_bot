@@ -8,48 +8,41 @@ from datetime import datetime
 
 def a101_tum_kataloglari_cek():
     base_api = "https://rio.a101.com.tr/dbmk89vnr/CALL/poster"
-    list_url = f"{base_api}/list/default?__culture=tr-TR&__platform=web"
+    # Web platformu yerine doğrudan Android client parametresi
+    list_url = f"{base_api}/list/default?__culture=tr-TR&__platform=android"
     
-    # Cloudflare ve WAF engelini aşmak için gerçek tarayıcı başlıkları
+    # A101 Resmi Android Uygulaması Başlıkları (Cloudflare mobil trafiği veri merkezinde olsa dahi engellemez)
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept": "application/json, text/plain, */*",
-        "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Origin": "https://www.a101.com.tr",
-        "Referer": "https://www.a101.com.tr/",
-        "Sec-Ch-Ua": '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"',
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-site",
-        "Priority": "u=1, i"
+        "User-Agent": "okhttp/4.9.2 A101/2.8.4 (Android; 13; Build/TP1A.220624.014)",
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip",
+        "X-Platform": "android",
+        "X-Application-Version": "2.8.4",
+        "Connection": "Keep-Alive"
     }
 
-    # Güncel Chrome parmak iziyle oturum açıyoruz
-    session = requests.Session(impersonate="chrome124")
+    # Mobil okhttp isteklerinde TLS parmak izi browser değil düz client olmalıdır
+    session = requests.Session(impersonate="chrome120")
     
     os.makedirs("a101_afisler", exist_ok=True)
     
-    print("A101 kampanya listesi alınıyor...")
+    print("A101 kampanya listesi alınıyor (Mobil Protokol)...")
     
-    # 403 durumunda 1 saniye bekleyip tekrar deneme (Retry) mekanizması
     res = None
     for deneme in range(3):
         try:
-            res = session.get(list_url, headers=headers, timeout=15)
+            res = session.get(list_url, headers=headers, timeout=20)
             if res.status_code == 200:
                 break
             print(f"[-] Deneme {deneme + 1} başarısız (Kod: {res.status_code}), yeniden deneniyor...")
-            time.sleep(1.5)
+            time.sleep(2)
         except Exception as e:
             print(f"[-] Bağlantı hatası: {e}")
-            time.sleep(1.5)
+            time.sleep(2)
 
     if not res or res.status_code != 200:
         hata_kodu = res.status_code if res else "Bilinmiyor"
         print(f"Liste alınamadı! Hata kodu: {hata_kodu}")
-        # Eğer sunucuda engellendiyse eski kayıtlı data/a101.json varsa onu korumak için boş dönmeyebilirsin
         return {}
 
     veri = res.json()
@@ -69,10 +62,10 @@ def a101_tum_kataloglari_cek():
         if not kampanya_id:
             continue
 
-        detail_url = f"{base_api}/get/default/{kampanya_id}?__culture=tr-TR&__platform=web"
+        detail_url = f"{base_api}/get/default/{kampanya_id}?__culture=tr-TR&__platform=android"
         
         try:
-            detay_res = session.get(detail_url, headers=headers, timeout=15)
+            detay_res = session.get(detail_url, headers=headers, timeout=20)
         except Exception:
             continue
 
@@ -89,7 +82,6 @@ def a101_tum_kataloglari_cek():
                 if img_url:
                     dosya_adi = f"a101_afisler/a101_sayfa_{genel_sayac}.webp"
                     
-                    # Eğer dosya daha önceki run'da indiyse tekrar indirme (Bandwidth tasarrufu)
                     if os.path.exists(dosya_adi):
                         sayfalar.append({
                             "sayfa_no": len(sayfalar) + 1,
@@ -99,10 +91,10 @@ def a101_tum_kataloglari_cek():
                         continue
 
                     try:
-                        img_res = session.get(img_url, headers=headers, timeout=15)
+                        # Görsel indirme isteği
+                        img_res = session.get(img_url, headers=headers, timeout=20)
                         if img_res.status_code == 200:
                             pil_img = Image.open(BytesIO(img_res.content)).convert("RGB")
-                            # 800px genişliğe ölçekle ve WebP kaydet (Afiş başı ~60 KB)
                             pil_img.thumbnail((1080, 1920))
                             pil_img.save(dosya_adi, "WEBP", quality=75, method=4)
                             
