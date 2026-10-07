@@ -6,7 +6,8 @@ from datetime import datetime
 # 1. BİM
 try:
     from bim import bim_temiz_veri_cek as bim_cek
-except ImportError:
+except Exception as e:
+    print(f"BİM İçe Aktarma Hatası: {e}")
     bim_cek = None
 
 # 2. A101
