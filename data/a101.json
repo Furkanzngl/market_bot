@@ -1,8 +1,8 @@
 {
   "market": "A101",
-  "guncelleme_tarihi": "2026-10-07 17:23",
+  "guncelleme_tarihi": "2026-10-07 17:31",
   "toplam_kampanya": 5,
-  "toplam_afis_sayisi": 19,
+  "toplam_afis_sayisi": 25,
   "kampanyalar": [
     {
       "kampanya_adi": "3-9 Ekim",
@@ -22,11 +22,35 @@
       "kampanya_id": "klmXtkTT9Y92HGon",
       "baslangic_tarihi": "2026-08-12T13:26:05.221Z",
       "bitis_tarihi": "2027-12-31T13:26:05.221Z",
-      "sayfa_sayisi": 1,
+      "sayfa_sayisi": 7,
       "sayfalar": [
         {
           "sayfa_no": 1,
-          "resim_url": "https://cdn2.a101.com.tr/dbmk89vnr/CALL/Image/get/DIWdUAR4lE_1024x1024.png"
+          "resim_url": "https://cdn2.a101.com.tr/dbmk89vnr/CALL/Image/get/xlXFafXI3d_1024x1024.png"
+        },
+        {
+          "sayfa_no": 2,
+          "resim_url": "https://cdn2.a101.com.tr/dbmk89vnr/CALL/Image/get/6rpOMV3tRw_1024x1024.png"
+        },
+        {
+          "sayfa_no": 3,
+          "resim_url": "https://cdn2.a101.com.tr/dbmk89vnr/CALL/Image/get/eDYwXcmdmH_1024x1024.png"
+        },
+        {
+          "sayfa_no": 4,
+          "resim_url": "https://cdn2.a101.com.tr/dbmk89vnr/CALL/Image/get/IodbjcgHnl_1024x1024.png"
+        },
+        {
+          "sayfa_no": 5,
+          "resim_url": "https://cdn2.a101.com.tr/dbmk89vnr/CALL/Image/get/NJPvVG3Ca1_1024x1024.png"
+        },
+        {
+          "sayfa_no": 6,
+          "resim_url": "https://cdn2.a101.com.tr/dbmk89vnr/CALL/Image/get/swV8NLlyUP_1024x1024.png"
+        },
+        {
+          "sayfa_no": 7,
+          "resim_url": "https://cdn2.a101.com.tr/dbmk89vnr/CALL/Image/get/K9xBDtoUTC_1024x1024.png"
         }
       ]
     },
