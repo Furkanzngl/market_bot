@@ -1,0 +1,37 @@
+name: Market Verilerini Guncelle
+
+on:
+  schedule:
+    # Her gece Türkiye saatiyle 03:00'te otomatik calisir (UTC 00:00)
+    - cron: '0 0 * * *'
+  workflow_dispatch: # GitHub web sitesinden "Run workflow" butonuyla istedigin an elle calistirma imkani
+
+jobs:
+  scrape-and-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repoyu Klonla
+        uses: actions/checkout@v4
+
+      - name: Python Kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Kutuphaneleri Yukle
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Marketleri Tara
+        run: |
+          python main.py
+
+      - name: Guncel JSON Dosyalarini Kaydet
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          git add data/ *.json
+          git commit -m "Otomatik Market Verisi Guncellemesi [skip ci]" || exit 0
+          git push
