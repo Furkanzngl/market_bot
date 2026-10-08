@@ -1,6 +1,9 @@
 from curl_cffi import requests
 from bs4 import BeautifulSoup
+from PIL import Image
+from io import BytesIO
 import json
+import os
 from datetime import datetime
 
 def bim_temiz_veri_cek():
@@ -10,6 +13,7 @@ def bim_temiz_veri_cek():
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 
+    os.makedirs("bim_afisler", exist_ok=True)
     session = requests.Session(impersonate="chrome120")
 
     print("BİM sunucusuna bağlanılıyor...")
@@ -34,16 +38,22 @@ def bim_temiz_veri_cek():
         if src not in eklenen_afisler:
             eklenen_afisler.add(src)
             sayfa_no = len(tum_gecerli_afisler) + 1
-            # The official CDN remains the image host. Re-encoding the source
-            # as WebP costs a second lossy pass and makes every CI run download
-            # and commit megabytes of identical image bytes.
-            tum_gecerli_afisler.append({
-                "sayfa_no": sayfa_no,
-                "resim_url": src,
-                # Kept for clients that already consume the previous schema.
-                "afis_hd": src,
-                "onizleme": src
-            })
+            dosya_adi = f"bim_afisler/bim_sayfa_{sayfa_no}.webp"
+
+            # Görseli indirip doğrudan WebP formatına sıkıştırıyoruz (~80 KB)
+            try:
+                img_res = session.get(src, headers=headers)
+                if img_res.status_code == 200:
+                    pil_img = Image.open(BytesIO(img_res.content)).convert("RGB")
+                    pil_img.save(dosya_adi, "WEBP", quality=75, method=4)
+                    
+                    tum_gecerli_afisler.append({
+                        "sayfa_no": sayfa_no,
+                        "afis_hd": dosya_adi,
+                        "onizleme": dosya_adi
+                    })
+            except Exception as e:
+                print(f"[-] BİM görsel indirilemedi ({src}): {e}")
 
     veri = {
         "market": "BİM",

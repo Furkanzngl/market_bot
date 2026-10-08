@@ -22,8 +22,6 @@ app.add_middleware(
 # Eğer yerel afiş görselleri kaydettiysen onları dışarıya açar (örn: http://ip:8000/images/...)
 if os.path.exists("sok_afisler"):
     app.mount("/images/sok", StaticFiles(directory="sok_afisler"), name="sok_afisler")
-if os.path.exists("bim_afisler"):
-    app.mount("/images/bim", StaticFiles(directory="bim_afisler"), name="bim_afisler")
 
 def dosya_oku(dosya_adi):
     slug = dosya_adi.lower().strip()
@@ -102,11 +100,6 @@ def market_detayi(market_slug: str):
     if not data:
         raise HTTPException(status_code=404, detail="Market verisi bulunamadı.")
     return data
-
-@app.get("/api/status")
-def toplama_durumu():
-    """Son toplama çalıştırmasının kaynak bazındaki durumunu döner."""
-    return dosya_oku("durum") or {"marketler": {}}
 
 @app.get("/api/migros/categories")
 def migros_kategorileri():
