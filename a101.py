@@ -4,102 +4,41 @@ import time
 import os
 from datetime import datetime
 
-FIREBASE_API_KEY = "AIzaSyDimmFB0voPzYNscV8M4j3HdcArspFnt14"
 BASE_RIO_API = "https://rio.a101.com.tr/dbmk89vnr/CALL"
 
-
-def taze_a101_token_al(session: requests.Session):
-    """
-    A101 misafir oturumundan taze bir Bearer JWT token uretir.
-    Eger alinamazsa guvenli geri donus (None) yapar.
-    """
-    try:
-        # 1. Adim: A101'den Custom Token talebi
-        guest_url = f"{BASE_RIO_API}/identity/guest"
-        headers_rio = {
-            "a101-user-agent": "web-3.0.3",
-            "accept": "application/json, text/plain, */*",
-            "content-type": "application/json",
-            "origin": "https://www.a101.com.tr",
-            "referer": "https://www.a101.com.tr/",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-        }
-        res_guest = session.post(guest_url, json={}, headers=headers_rio, timeout=10)
-        
-        custom_token = None
-        if res_guest.status_code == 200:
-            custom_token = res_guest.json().get("customToken")
-
-        # 2. Adim: Custom Token varsa Google Identity Toolkit uzerinden idToken (Bearer) uret
-        if custom_token:
-            google_url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key={FIREBASE_API_KEY}"
-            res_google = session.post(
-                google_url,
-                json={"token": custom_token, "returnSecureToken": True},
-                headers={"content-type": "application/json"},
-                timeout=10
-            )
-            if res_google.status_code == 200:
-                yeni_token = res_google.json().get("idToken")
-                if yeni_token:
-                    print("[+] Taze A101 yetkilendirme token'i basariyla uretildi.")
-                    return yeni_token
-    except Exception as e:
-        print(f"[-] Dinamik token alma uyarisi: {e}")
-
-    return None
-
-
 def a101_tum_kataloglari_cek():
-    # Gecici/Varsayilan yedek token (Dinamik istek basarisiz olursa devreye girer)
-    varsayilan_token = "test_toekni"
-
     base_api = f"{BASE_RIO_API}/poster"
     list_url = f"{base_api}/list/default?__culture=tr-TR&__platform=web"
     
+    headers = {
+        "a101-user-agent": "web-3.0.3",
+        "accept": "application/json, text/plain, */*",
+        "accept-language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+        "authorization": "Bearer guest_access_token",
+        "installationid": "cac717477285155399a774bd92980d25",
+        "content-type": "application/json",
+        "origin": "https://www.a101.com.tr",
+        "referer": "https://www.a101.com.tr/",
+        "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not A(Brand";v="99"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-site",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    }
+
     session = requests.Session(impersonate="chrome120")
-
-    # Once dinamik token almayi dene
-    aktif_token = taze_a101_token_al(session) or varsayilan_token
-
-    def basliklari_hazirla(token):
-        return {
-            "a101-user-agent": "web-3.0.3",
-            "accept": "application/json, text/plain, */*",
-            "accept-language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-            "authorization": f"Bearer {token}",
-            "installationid": "cac717477285155399a774bd92980d25",
-            "content-type": "application/json",
-            "origin": "https://www.a101.com.tr",
-            "referer": "https://www.a101.com.tr/",
-            "sec-ch-ua": '"Chromium";v="124", "Google Chrome";v="124", "Not A(Brand";v="99"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Windows"',
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-site",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-        }
-
-    headers = basliklari_hazirla(aktif_token)
+    
     print("A101 kampanya listesi alınıyor...")
-
     try:
         res = session.get(list_url, headers=headers, timeout=20)
     except Exception as e:
-        print(f"[-] A101 Baglanti hatasi: {e}")
+        print(f"[-] A101 Bağlantı hatası: {e}")
         return {}
 
-    # Token suresi bitmisse (401/403 gelirse) tekrar taze token iste
-    if res.status_code in [401, 403]:
-        print("[-] Token suresi dolmus veya reddedildi. Yenisi talep ediliyor...")
-        yeni_token = taze_a101_token_al(session)
-        if yeni_token:
-            headers = basliklari_hazirla(yeni_token)
-            res = session.get(list_url, headers=headers, timeout=20)
-
     if res.status_code != 200:
-        print(f"[-] Liste alinamadi! Hata kodu: {res.status_code}")
+        print(f"[-] Liste alınamadı! Hata kodu: {res.status_code}")
         return {}
 
     veri = res.json()
@@ -119,6 +58,8 @@ def a101_tum_kataloglari_cek():
         if not kampanya_id:
             continue
 
+        print(f" -> Çekiliyor: {baslik}...")
+        
         detail_url = f"{base_api}/get/default/{kampanya_id}?__culture=tr-TR&__platform=web"
         try:
             detay_res = session.get(detail_url, headers=headers, timeout=20)
@@ -143,7 +84,7 @@ def a101_tum_kataloglari_cek():
                     img_url = p
 
                 if img_url:
-                    # Mobil kotalari icin agir PNG yerine hafif JPG CDN donusumu
+                    # Mobil kotalar için hafif JPG versiyonu
                     opt_url = img_url.replace(".png", ".jpg").replace("_1024x1024", "_800x800")
                     sayfalar.append({
                         "sayfa_no": len(sayfalar) + 1,
@@ -171,7 +112,7 @@ def a101_tum_kataloglari_cek():
         })
 
         toplam_sayfa_sayisi += len(sayfalar)
-        time.sleep(0.1)
+        time.sleep(0.05)
 
     veri_paketi = {
         "market": "A101",
@@ -183,11 +124,10 @@ def a101_tum_kataloglari_cek():
 
     return veri_paketi
 
-
 if __name__ == "__main__":
     sonuc = a101_tum_kataloglari_cek()
     if sonuc and sonuc.get("kampanyalar"):
         os.makedirs("data", exist_ok=True)
         with open("data/a101.json", "w", encoding="utf-8") as f:
             json.dump(sonuc, f, ensure_ascii=False, separators=(',', ':'))
-        print(f"\n[OK] A101 basariyla guncellendi: {sonuc.get('toplam_afis_sayisi', 0)} sayfa")
+        print(f"\n[OK] A101 başarıyla tamamlandı: Toplam {sonuc.get('toplam_afis_sayisi', 0)} sayfa kaydedildi.")
