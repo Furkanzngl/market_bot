@@ -52,16 +52,7 @@ def taze_a101_token_al(session: requests.Session):
 
 def a101_tum_kataloglari_cek():
     # Gecici/Varsayilan yedek token (Dinamik istek basarisiz olursa devreye girer)
-    varsayilan_token = (
-        "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJwcm9qZWN0SWQiOiJkYm1rODl2bnIiLCJpZGVudGl0eSI6ImVuZHVzZXIiLC"
-        "Jhbm9ueW1vdXMiOmZhbHNlLCJ1c2VySWQiOiJub25tZW0yNjEwMDZneDZHR1lraThrZ1UiLCJjbGFpbXMiOnsiY2RoSWQiOiIx"
-        "MDAwIiwiZGV2aWNlSWQiOiJwN3h2dC15aGg3cC0xaDRtbi0zZXVlbyIsIm1wVXNlcklkIjoibm9ubWVtMjYxMDA2Z3g2R0dZa2"
-        "k4a2dVIn0sInNlc3Npb25JZCI6IjE0OTk0MzEyZGRkMjQyM2ZhZjg3OTEzYmIyMGU3OTg4IiwiaWF0IjoxNzkxNDY2NDY4LCJl"
-        "eHAiOjE3OTE0NzAwNjh9.x1VA_l5UmixRJJZzEChsLEaD5e0Ku2Lx0gnxOTNH512KUdKxfhIl9a9qiD9tIlPFlaSwVgbUl-XO"
-        "zKv_eXSNASMNUsf7QCa7COgfFulfy5FhRBYza-gbTxQjNyXCnDB25kbLYC1SiXKXygpmAl_bX79_EWymQKWFmnRCQ6auoYW1i"
-        "578EeOxEhKmvtuakN9OHMu0hlvqX_GtbHb01qBRsneXBt_uS2jueV1TdxH9XDIeSsvRiGHw113ICTFPhyXA0MSfMKG_A98fOv"
-        "6i-f3CCoPcNQB9lDDYMmonGtZ7WWoIHwpG-v-cSUZC60KXHQOW6er3j3RxJBPJDzPuRDRXJA"
-    )
+    varsayilan_token = "test_toekni"
 
     base_api = f"{BASE_RIO_API}/poster"
     list_url = f"{base_api}/list/default?__culture=tr-TR&__platform=web"
