@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 import json
 import os
@@ -18,6 +19,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Android/OkHttp transparently supports gzip.  This keeps the existing API
+# responses and URLs intact while reducing JSON transfer size.
+app.add_middleware(GZipMiddleware, minimum_size=512)
 
 # Eğer yerel afiş görselleri kaydettiysen onları dışarıya açar (örn: http://ip:8000/images/...)
 if os.path.exists("sok_afisler"):
