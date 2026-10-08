@@ -19,13 +19,7 @@ def a101_tum_kataloglari_cek():
     session = requests.Session(impersonate="chrome120")
     
     print("A101 kampanya listesi alınıyor...")
-    try:
-        res = get_with_retries(session, list_url, headers=headers)
-    except CollectorError as exc:
-        # Shared CI addresses can be blocked by A101's WAF. Returning an empty
-        # result is intentional: main.py keeps the last verified payload.
-        print(f"[-] A101 kaynağı erişimi reddetti; son doğrulanmış veri korunacak: {exc}")
-        return {}
+    res = get_with_retries(session, list_url, headers=headers)
 
     veri = res.json()
     items = veri.get("items") or veri.get("data") or []
