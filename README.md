@@ -18,3 +18,18 @@ Katalogları indirip JPEG → WebP dönüştürmek iki kez kayıplı sıkıştı
 ## GitHub Actions ve A101 403
 
 GitHub'ın paylaşımlı IP'leri zaman zaman A101 WAF/CDN katmanında engellenir; bunu başlık değiştirerek güvenilir şekilde aşmak doğru ya da kalıcı değildir. Bu akış diğer marketleri günceller, A101'in son çalışan verisini korur ve `durum.json` içine uyarı yazar. Kesintisiz tazelik gerekiyorsa cron'u sabit IP'li kendi sunucunuzda çalıştırıp depoya yetkili anahtarla göndermek gerekir.
+
+## Mobil uygulama: hızlı veri akışı
+
+ViewPager sekmesi açıldığında eski `/api/market/{slug}` ucu yerine önce
+`/api/v2/market/{slug}` çağrılmalıdır. Bu uç yalnızca kampanya kartlarını ve
+480 px kapak önizlemesini verir. Kullanıcı kampanyayı açtığında
+`/api/v2/market/{slug}/campaign/{id}` çağrılır; liste görünümünde
+`onizleme_url`, yakınlaştırılmış görünümde `hd_url` kullanılır.
+
+`/api/image/{id}?w=480` ilk istekte resmi 82 kalite WebP olarak sunucuda
+önbelleğe alır. Sonraki kullanıcılar ve uygulama disk önbelleği aynı küçük
+dosyayı alır; HTTP önbellek ömrü 7 gündür. Görüntü yükleyicide disk cache açık,
+liste için 480 px, tam ekran için 1080 px istenmelidir. Migros ürünleri için
+`/api/migros/products?offset=0&limit=30` kullanın; bütün ürün listesini tek
+istekte indirmeyin.
